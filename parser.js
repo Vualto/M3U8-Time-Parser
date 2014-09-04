@@ -1,160 +1,160 @@
 function fetch_stream_datetime(options) {
-  var opts = $.extend({
-    'manifest_url': null,
-    'callback': null,
-    'fragment_length': 2,
-    'polling_delay': 10000
-  }, options);
+    var opts = $.extend({
+        'manifest_url': null,
+        'callback': null,
+        'fragment_length': 2,
+        'polling_delay': 10000
+    }, options);
 
-  var state = {
-    'index': 0,
-    'datetime': 0
-  };
+    var state = {
+        'index': 0,
+        'datetime': 0
+    };
 
-  window.console && console.debug("Manifest url: " + opts.manifest_url);
-  $.ajax({
-    url: opts.manifest_url,
-    success: process_manifest,
-    error: ajax_error
-  });
-
-  function process_manifest(data, textStatus, jqXHR) {
-    window.console && console.log("Loaded manifest file");
-
-    indexOfSlash = opts.manifest_url.lastIndexOf('/') + 1;
-    audio_file = data.match(/^[a-z]+-audio=\d*\.m3u8/m);
-    var url = opts.manifest_url.substring(0, indexOfSlash) + audio_file;
-    window.console && console.debug("Audio file url: " + url);
-
-    audio_url = url;
-    fetch_initial_audio(url);
-  }
-
-  function fetch_initial_audio(url) {
+    window.console && console.debug("Manifest url: " + opts.manifest_url);
     $.ajax({
-      url: url,
-      success: process_audio
+        url: opts.manifest_url,
+        success: process_manifest,
+        error: ajax_error
     });
-    window.setTimeout(fetch_audio_fragment, opts.polling_delay, [url]);
-  }
 
-  function fetch_audio_fragment(url) {
-    range_header = 'bytes=' + state.index + '-' + (state.index + 50000);
-    window.console && console.debug('Range Header Value: ' + range_header);
+    function process_manifest(data, textStatus, jqXHR) {
+        window.console && console.log("Loaded manifest file");
 
-    $.ajax({
-      url: url,
-      beforeSend: function(xhr) {
-        xhr.setRequestHeader('Range', range_header);
-      },
-      success: process_audio_fragment,
-      error: ajax_error
-    });
-    window.setTimeout(fetch_audio_fragment, opts.polling_delay, [url]);
-  }
+        indexOfSlash = opts.manifest_url.lastIndexOf('/') + 1;
+        audio_file = data.match(/^[a-z]+-audio=\d*\.m3u8/m);
+        var url = opts.manifest_url.substring(0, indexOfSlash) + audio_file;
+        window.console && console.debug("Audio file url: " + url);
 
-  function interim_events() {
-    var current_datetime = state.datetime;
-    var loops = opts.polling_delay / 1000;
-
-    for (var i = 0; i < loops; i++) {
-      window.setTimeout(notify, 1000 * i, [current_datetime + (1000 * i)]);
+        audio_url = url;
+        fetch_initial_audio(url);
     }
-  }
 
-  function process_audio(data, textStatus, jqXHR) {
-    var start = performance.now();
+    function fetch_initial_audio(url) {
+        $.ajax({
+            url: url,
+            success: process_audio
+        });
+        window.setTimeout(fetch_audio_fragment, opts.polling_delay, [url]);
+    }
 
-    window.console && console.log("Loaded audio file");
+    function fetch_audio_fragment(url) {
+        range_header = 'bytes=' + state.index + '-' + (state.index + 50000);
+        window.console && console.debug('Range Header Value: ' + range_header);
 
-    // Parse the datestamp
-    var datestamps = data.match(/#EXT-X-PROGRAM-DATE-TIME:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{6})?Z/gm);
-    var datestamp = datestamps[datestamps.length - 1];
-    window.console && console.debug(datestamps.length + ' datestamps found');
-    window.console && console.debug('The last datestamp is "' + datestamp + '"');
+        $.ajax({
+            url: url,
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('Range', range_header);
+            },
+            success: process_audio_fragment,
+            error: ajax_error
+        });
+        window.setTimeout(fetch_audio_fragment, opts.polling_delay, [url]);
+    }
 
-    state.datetime = datetime_parser(datestamp);
+    function interim_events() {
+        var current_datetime = state.datetime;
+        var loops = opts.polling_delay / 1000;
 
-    // Get rid of the uneeded part of the stream
-    var datestamp_index = data.indexOf(datestamp);
-    window.console && console.debug('The datestamp index is ' + datestamp_index);
-    var cleaned_data = data.substring(datestamp_index, data.length);
+        for (var i = 0; i < loops; i++) {
+            window.setTimeout(notify, 1000 * i, [current_datetime + (1000 * i)]);
+        }
+    }
 
-    // Handle stream fragments
-    process_audio_fragment(cleaned_data, data.length);
+    function process_audio(data, textStatus, jqXHR) {
+        var start = performance.now();
 
-    // Cleanup
-    var execution_time = performance.now() - start;
-    window.console && console.debug('All Audio data parsed in: ' + execution_time + ' milliseconds');
-  }
+        window.console && console.log("Loaded audio file");
 
-  function process_audio_fragment(data, original_length) {
-    var start = performance.now();
+        // Parse the datestamp
+        var datestamps = data.match(/#EXT-X-PROGRAM-DATE-TIME:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{6})?Z/gm);
+        var datestamp = datestamps[datestamps.length - 1];
+        window.console && console.debug(datestamps.length + ' datestamps found');
+        window.console && console.debug('The last datestamp is "' + datestamp + '"');
 
-    window.console && console.debug('The starting datetime is: ' + state.datetime);
-    var fragments = data.match(/=\d*-\d*.ts/gm);
-    var additional_seconds = fragments.length * opts.fragment_length;
-    state.datetime += (additional_seconds * 1000);
-    window.console && console.debug('Adding ' + additional_seconds + ' seconds');
-    window.console && console.info('Final Date is: ' + state.datetime);
+        state.datetime = datetime_parser(datestamp);
 
-    if (typeof(original_length) == "number")
-      state.index = original_length;
-    else
-      state.index += data.length;
+        // Get rid of the uneeded part of the stream
+        var datestamp_index = data.indexOf(datestamp);
+        window.console && console.debug('The datestamp index is ' + datestamp_index);
+        var cleaned_data = data.substring(datestamp_index, data.length);
 
-    window.console && console.debug('Current index: ' + state.index);
+        // Handle stream fragments
+        process_audio_fragment(cleaned_data, data.length);
 
-    notify(state.datetime);
-    interim_events();
+        // Cleanup
+        var execution_time = performance.now() - start;
+        window.console && console.debug('All Audio data parsed in: ' + execution_time + ' milliseconds');
+    }
 
-    var end = performance.now() - start;
-    window.console && console.debug('Audio fragment data parsed in ' + end + ' milliseconds');
-  }
+    function process_audio_fragment(data, original_length) {
+        var start = performance.now();
 
-  function datetime_parser(datestamp) {
-    datestamp = datestamp.replace('#EXT-X-PROGRAM-DATE-TIME:', '');
+        window.console && console.debug('The starting datetime is: ' + state.datetime);
+        var fragments = data.match(/=\d*-\d*.ts/gm);
+        var additional_seconds = fragments.length * opts.fragment_length;
+        state.datetime += (additional_seconds * 1000);
+        window.console && console.debug('Adding ' + additional_seconds + ' seconds');
+        window.console && console.info('Final Date is: ' + state.datetime);
 
-    var year = datestamp.substring(0, 4);
-    var month = datestamp.substring(5, 7) - 1;
-    var day = datestamp.substring(8, 10);
+        if (typeof(original_length) == "number")
+            state.index = original_length;
+        else
+            state.index += data.length;
 
-    var hours = datestamp.substring(11, 13);
-    var minutes = datestamp.substring(14, 16);
-    var seconds = datestamp.substring(17, 19);
-    var milliseconds = datestamp.substring(20, 23);
+        window.console && console.debug('Current index: ' + state.index);
 
-    datestamp = Date.UTC(year, month, day, hours, minutes, seconds, milliseconds);
+        notify(state.datetime);
+        interim_events();
 
-    return datestamp;
-  }
+        var end = performance.now() - start;
+        window.console && console.debug('Audio fragment data parsed in ' + end + ' milliseconds');
+    }
 
-  function notify(datetime) {
-    datetime = new Date(parseInt(datetime));
+    function datetime_parser(datestamp) {
+        datestamp = datestamp.replace('#EXT-X-PROGRAM-DATE-TIME:', '');
 
-    $(document).trigger("stream_datetime", [datetime]);
+        var year = datestamp.substring(0, 4);
+        var month = datestamp.substring(5, 7) - 1;
+        var day = datestamp.substring(8, 10);
 
-    if(typeof(opts.callback) == "function")
-      opts.callback(datetime);
-  }
+        var hours = datestamp.substring(11, 13);
+        var minutes = datestamp.substring(14, 16);
+        var seconds = datestamp.substring(17, 19);
+        var milliseconds = datestamp.substring(20, 23);
 
-  function ajax_error(jqXHR, textStatus, errorThrown) {
-    window.console && console.error('Failed to load ' + this.url);
-  }
+        datestamp = Date.UTC(year, month, day, hours, minutes, seconds, milliseconds);
+
+        return datestamp;
+    }
+
+    function notify(datetime) {
+        datetime = new Date(parseInt(datetime));
+
+        $(document).trigger("stream_datetime", [datetime]);
+
+        if(typeof(opts.callback) == "function")
+            opts.callback(datetime);
+    }
+
+    function ajax_error(jqXHR, textStatus, errorThrown) {
+        window.console && console.error('Failed to load ' + this.url);
+    }
 }
 
 $(document).on("stream_datetime", function(event, date) {
-  console.log("Event handler example " + date);
+    console.log("Event handler example " + date);
 });
 function callback_example(date) {
-  console.log("Callback example" + date);
-  $('#date-header-value').html(date);
+    console.log("Callback example" + date);
+    $('#date-header-value').html(date);
 }
 
 var options = {
-  'manifest_url': '',
-  'fragment_length': 2,
-  'callback': callback_example,
-  'polling_delay': 20000
+    'manifest_url': '',
+    'fragment_length': 2,
+    'callback': callback_example,
+    'polling_delay': 20000
 };
 fetch_stream_datetime(options);
