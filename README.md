@@ -4,17 +4,37 @@ Takes a live M3U8 stream and gets the current stream time. The system uses AJAX,
 
 ## Usage
 
-Include the JS file into you application, and remove the example callback and event handler. Then, simple pass a configuration using the following format into the function.
+Include the JS file in your application (with jQuery), then simply pass a configuration using the following format into the function.
 
 ```
-var options = {
-  'manifest_url': 'http://example.com/manifest.m3u8',
-  'fragment_length': 2,
-  'callback': callback_example,
-  'polling_delay': 20000
-};
-fetch_stream_datetime(options);
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script type="text/javascript" src="./parser.js"></script>
+<script type="text/javascript">
+    fetchStreamDatetime({
+        'manifestUrl': '',
+        'fragmentLength': 2,
+        'callback': callbackExample,
+        'pollingDelay': 20000
+    });
+</script>
 ```
+
+Then, you can process the output Date object either by using the callback you have declared, or by catching the event that is fired.
+
+```
+<script type="text/javascript">
+    $(document).on("streamDatetime", function(event, date) {
+        console.log("Event handler example " + date);
+    });
+
+    function callbackExample(date) {
+        console.log("Callback example" + date);
+        $('#date-header-value').html(date);
+    }
+</script>
+```
+
+The callback and event are both triggered together (lines 135 and 138). They are triggered every-time the Date() object changes, normally once per second. 
 
 ## How does it work?
 
