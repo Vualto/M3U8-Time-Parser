@@ -1,8 +1,25 @@
 <html>
   <head>
     <title></title>
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-    <script src="./parser.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="./parser.js"></script>
+    <script type="text/javascript">
+        $(document).on("streamDatetime", function(event, date) {
+            console.log("Event handler example " + date);
+        });
+        
+        function callbackExample(date) {
+            console.log("Callback example" + date);
+            $('#date-header-value').html(date);
+        }
+
+        fetchStreamDatetime({
+            'manifestUrl': '',
+            'fragmentLength': 2,
+            'callback': callbackExample,
+            'pollingDelay': 20000
+        });
+    </script>
   </head>
   <body>
   		<div id="date-header-value"></div>

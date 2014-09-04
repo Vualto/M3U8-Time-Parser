@@ -142,19 +142,3 @@ function fetchStreamDatetime(options) {
         window.console && console.error('Failed to load ' + this.url);
     }
 }
-
-$(document).on("streamDatetime", function(event, date) {
-    console.log("Event handler example " + date);
-});
-function callbackExample(date) {
-    console.log("Callback example" + date);
-    $('#date-header-value').html(date);
-}
-
-var options = {
-    'manifestUrl': '',
-    'fragmentLength': 2,
-    'callback': callbackExample,
-    'pollingDelay': 20000
-};
-fetchStreamDatetime(options);
